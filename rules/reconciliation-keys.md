@@ -1,14 +1,13 @@
-# Reconciliation & Keys
+# Reconciliation & keys
 
 ## recon-type-position
 
 ### Why it matters
-React is fundamentally a tree comparison engine. It doesn't diff the physical browser DOM — it compares an internal virtual tree of **Fiber nodes**. 
-During a re-render, if a component element has the exact **same type** (e.g., it's a native `<input>`, or it's the exact same custom `Form` function) located at the exact **same position** in the JSX tree structure as the previous render, React aggressively assumes it is the exact same contextual entity. It seamlessly reuses the existing instance—and vastly more importantly, **retains all of its local state and DOM focus**.
+React compares its internal fiber tree between renders. If a component element has the same **type** (same HTML tag or same component function) at the same **position** in the JSX tree as the previous render, React assumes it's the same instance. It reuses the component and **keeps its state and DOM focus**.
 
-This often triggers severe, hair-pulling bugs when you use conditional rendering to visually swap between two conceptually distinct components that happen to share the same root type.
+This causes bugs when you conditionally swap between two components that share the same root type.
 
-### ❌ Wrong — shared position leaks internal state
+### ❌ Wrong — shared position leaks state
 ```jsx
 function App() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,7 +15,7 @@ function App() {
   return (
     <div className="auth-box">
       {isLogin 
-        // 🐛 Both branches render an <Input /> at the first position in this div
+        // Both branches render an <Input /> at the first child position
         ? <Input placeholder="Username" /> 
         : <Input placeholder="Email Address" />
       }
@@ -25,47 +24,43 @@ function App() {
   );
 }
 ```
-**The Bug:** A user types "John" into the Username input, decides they want to register instead, clicks "Switch Mode", and "John" remains fully populated in the "Email Address" input! React reused the component instance because it was an `<Input>` swap for an `<Input>`.
+**The bug:** A user types "John" in the Username field, clicks "Switch Mode", and "John" is still in the Email field. React reused the `<Input>` instance because the type and position didn't change.
 
-### ✅ Right — use `key` to strictly sever identity
+### ✅ Right — use `key` to force a new instance
 ```jsx
 {isLogin
   ? <Input key="login-username" placeholder="Username" />
   : <Input key="register-email" placeholder="Email Address" />
 }
 ```
-The explicit `key` overrides React's position-based heuristic, forcing React to destroy the login input and mount a profoundly fresh register input.
+Different keys tell React these are separate components. It destroys the old one and mounts a fresh one.
 
 ---
 
 ## recon-key-identity
 
 ### Why it matters
-The `key` prop is not merely an annoying ESLint warning in lists. It is React's authoritative mechanism for **element identity and continuity**. 
-A changed key screams to React: "Destroy the old fiber, unmount it, and instantiate a brand-new component."
-A stable key tells React: "This is the exact same conceptual entity as before, simply update its props and mutate the DOM."
+The `key` prop isn't just an ESLint nag for lists. It's React's mechanism for tracking **identity**. A changed key tells React: "This is a different entity — destroy the old one and create a new one." A stable key tells React: "Same thing, just update its props."
 
-### Axioms for Keys
-| Requirement | Consequence if violated |
+### Key requirements
+| Requirement | What goes wrong if you break it |
 |---|---|
-| **Must be uniquely distinct among siblings** | React gets confused, items misalign, state binds to the wrong row |
-| **Must be permanently stable across renders** | Constant devastating unmounts/remounts, destroyed scroll positioning, obliterated focus |
-| **Must be deeply derived from the data** | e.g. `item.databaseId`, *not* array index if the list can be sorted/filtered |
+| Unique among siblings | State binds to the wrong list item |
+| Stable across renders | Components unmount and remount constantly, losing scroll position and focus |
+| Derived from data | Use `item.id`, not the array index (unless the list never reorders) |
 
-### ❌ Wrong — volatile keys
+### ❌ Wrong — unstable keys
 ```jsx
-// 🚨 Math.random() generates a new string every single render.
-// The entire list completely tears down and mounts from scratch on every keystroke!
+// Math.random() creates a new key every render — the whole list rebuilds
 {users.map(user => <UserRow key={Math.random()} user={user} />)}
 
-// 🚨 Array Index is dangerous if users can be reordered or deleted.
-// If you delete index 0, index 1 becomes index 0, inheriting the old component's local state.
+// Array index is dangerous if users can be reordered or deleted.
+// Deleting index 0 makes index 1 become index 0, inheriting the wrong state.
 {users.map((user, index) => <UserRow key={index} user={user} />)}
 ```
 
-### ✅ Right — inherently stable identity
+### ✅ Right — stable identity from data
 ```jsx
-// 🛠️ Derived from the raw underlying structural data
 {users.map(user => <UserRow key={user.uuid} user={user} />)}
 ```
 
@@ -74,17 +69,16 @@ A stable key tells React: "This is the exact same conceptual entity as before, s
 ## recon-no-inline-definition
 
 ### Why it matters
-If you ever physically define a component function **inside the render body of another component**, you are severely breaking React. 
-React sees a brand-new function reference/type evaluated on every single render of the parent. Since the component's strict Type string has changed, React brutally tears down the old unmounted component and mounts a fresh one — vaporizing all internal state (`useState`), tearing down `useEffect` hooks, and causing aggressive UI flashing.
+Defining a component function inside another component's render body means React sees a brand-new function type every render. Since the type changed, React unmounts the old instance and mounts a new one — wiping all its state, tearing down effects, and causing flickering.
 
 ### ❌ Wrong — inline component definition
 ```jsx
 function UserProfile() {
   const [clicks, setClicks] = useState(0);
 
-  // 🚨 DANGER: InnerBadge is a brand-new function identity on every single render!
+  // New function reference every render — React treats it as a new component type
   function InnerBadge() {
-    const [hovered, setHovered] = useState(false); // Gets zeroed out instantly
+    const [hovered, setHovered] = useState(false); // State resets every parent render
     return <span onMouseEnter={() => setHovered(true)}>Role</span>;
   }
 
@@ -96,9 +90,9 @@ function UserProfile() {
 }
 ```
 
-### ✅ Right — strictly define high at module level
+### ✅ Right — define components at module level
 ```jsx
-// 🛠️ Defined identically once. React easily reuses the type.
+// Defined once. React reuses the same type.
 function InnerBadge() {
   const [hovered, setHovered] = useState(false);
   return <span onMouseEnter={() => setHovered(true)}>Role</span>;
@@ -115,18 +109,18 @@ function UserProfile() {
 ## recon-key-reset
 
 ### Why it matters
-Sometimes, typically when routing or swapping major data contexts, a component's internal local state needs to be comprehensively wiped out. Instead of painfully writing a cascading chain of `useEffect` hooks attempting to watch prop changes and manually reset every `useState` scalar back to zero, simply changing a component's `key` cleanly guarantees a flawless structural reset.
+Sometimes you need to wipe a component's state completely — when routing to a different entity or switching data contexts. Instead of writing `useEffect` chains that manually reset each piece of state, change the component's `key`. React treats a key change as replacing the component entirely: unmount the old one, mount a fresh one.
 
-### ✅ Pattern: Prop-driven structural reset
+### ✅ Pattern: key-driven reset
 ```jsx
-// 🛠️ Every time activeChatId fundamentally changes, the entire ChatPanel 
-// is scrubbed from existence and reinitialized. No residual local state survives.
+// When activeChatId changes, the entire ChatPanel unmounts and
+// remounts with clean state. No leftover messages from the previous chat.
 <ChatPanel key={activeChatId} conversationId={activeChatId} />
 ```
 
 ### Notes
-- This absolutely forces an unmount and mount cascade cycle, which is natively slow. Use intentionally for sweeping resets, not minor prop updates.
-- Use this aggressively to avoid "derived state" anti-patterns.
+- This forces a full unmount/mount cycle, which is slower than a prop update. Use it for full resets, not minor updates.
+- It's the clean alternative to "derived state" anti-patterns where effects watch props and manually reset state.
 
 ---
-**Related rules:** `rerender-parent`, `rerender-derived-state-no-effect` (Vercel sync)
+**Related rules:** `rerender-parent`, `rerender-derived-state-no-effect`

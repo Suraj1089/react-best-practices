@@ -1,27 +1,27 @@
-# Composition Patterns
+# Composition patterns
 
-The absolute most overlooked React optimization tool is **component structure**. Before reaching for `useMemo`, `useCallback`, or `React.memo` (which all add cognitive overhead and run-time checks), you should actively consider whether a simple composition refactor can eliminate the performance problem entirely. Composition solves problems at the architectural level.
+The most overlooked React optimization tool is **component structure**. Before reaching for `useMemo`, `useCallback`, or `React.memo`, consider whether rearranging your components can solve the problem. Composition fixes performance at the architecture level — no runtime overhead, no dependency arrays, no comparison checks.
 
 ---
 
 ## compose-move-state-down
 
 ### Why it matters
-State kept high up in a parent triggers re-renders on the entire component subtree whenever it changes. If that state is logically only used by a tiny portion of the UI (like a hover state or a modal toggle), you are burning CPU cycles rendering parents and siblings for no reason. Move the state into its own isolated component. Now only that specific component re-renders — the rest of the tree is safely bypassed.
+State in a parent triggers re-renders for the entire subtree. If that state only affects a small part of the UI (like a sidebar toggle), you're re-rendering everything else for no reason. Extract the stateful piece into its own component. Now only that component re-renders.
 
-### ❌ Wrong — state lives high, forcing broad re-renders
+### ❌ Wrong — state lives high, everything re-renders
 ```jsx
 function Dashboard() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // 🐛 High-level state
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <div className="layout">
-      {/* Any toggle causes the ENTIRE Dashboard to re-render */}
+      {/* Toggling the sidebar re-renders the entire Dashboard */}
       <button onClick={() => setIsSidebarOpen(o => !o)}>Toggle Menu</button>
       {isSidebarOpen && <Sidebar />}
       
       <main>
-        {/* 🚨 This extremely heavy chart re-renders every time you toggle the sidebar! */}
+        {/* This heavy chart re-renders every time the sidebar toggles */}
         <VeryExpensiveWebGLChart data={complexData} /> 
       </main>
     </div>
@@ -31,7 +31,6 @@ function Dashboard() {
 
 ### ✅ Right — extract the stateful piece
 ```jsx
-// 🛠️ Extract the toggle logic into an isolated shell
 function SidebarToggle() {           
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -43,12 +42,12 @@ function SidebarToggle() {
 }
 
 function Dashboard() {
-  // ✅ No state here! Dashboard only renders once.
+  // No state here. Dashboard renders once.
   return (
     <div className="layout">
       <SidebarToggle />
       <main>
-        <VeryExpensiveWebGLChart data={complexData} /> {/* Safely shielded */}
+        <VeryExpensiveWebGLChart data={complexData} />
       </main>
     </div>
   );
@@ -60,13 +59,11 @@ function Dashboard() {
 ## compose-children-prop
 
 ### Why it matters
-When a component renders its `children` prop, those children are **not re-created** when the parent component's own internal state changes. React passes children down as props — and because those props were instantiated in the *outer* scope (which didn't re-render), the JSX element object references remain identical.
+When a component renders its `children`, those children are **not re-created** when the parent's own state changes. The children were instantiated in the outer scope (which didn't re-render), so their JSX element references stay the same. This shields heavy content from a parent's frequent state updates.
 
-This acts as an invisible shield for heavy, static UI segments against a parent's frequent state updates (like scroll, drag, or animation state).
-
-### ✅ Pattern — children as a composition shield
+### ✅ Pattern — children as a shield
 ```jsx
-// This component tracks scroll aggressively
+// This component updates state on every scroll event
 function ScrollProgressTracker({ children }) {
   const [scrollY, setScrollY] = useState(0);
 
@@ -79,10 +76,7 @@ function ScrollProgressTracker({ children }) {
   return (
     <div className="scroll-container">
       <div className="progress-bar" style={{ width: `${scrollY / 10}%` }} />
-      {/* 
-        ✅ children won't re-render when scrollY changes! 
-        Because the elements evaluating to 'children' were created outside.
-      */}
+      {/* children don't re-render when scrollY changes */}
       <div className="content">{children}</div>
     </div>
   );
@@ -103,11 +97,11 @@ function App() {
 ## compose-components-as-props
 
 ### Why it matters
-Passing React component elements as named props (also known as the "slots" pattern) works exactly the same way as `children` — elements from the outer scope aren't affected by inner state. This unlocks highly flexible, decoupled layouts where the parent wrapper doesn't need to know any UI details, reducing prop drilling and coupling.
+Passing React elements as named props (the "slots" pattern) works the same way as `children` — elements from the outer scope aren't affected by the inner component's state. This gives you flexible, decoupled layouts without prop drilling.
 
-### ✅ Pattern — named component slots (props)
+### ✅ Pattern — named slots
 ```jsx
-// Layout completely decoupled from content
+// Layout doesn't know or care what goes in each pane
 function TwoColumnLayout({ leftContent, rightContent }) {
   const [isResizing, setIsResizing] = useState(false);
   
@@ -120,7 +114,7 @@ function TwoColumnLayout({ leftContent, rightContent }) {
   );
 }
 
-// Usage — full control of the inner areas without touching the TwoColumnLayout itself
+// Usage — content is defined outside, unaffected by resize state
 function CRMApp() {
   return (
     <TwoColumnLayout
@@ -131,8 +125,8 @@ function CRMApp() {
 }
 ```
 
-### Performance clarification
-Passing `<ContactsSidebar />` as a prop is **not** the same as calling its render function. What's passed is simply an inert React element object (`{ type: ContactsSidebar, props: ... }`). It only actively renders and runs its logic when the receiving component physically includes it in its JSX return. 
+### A subtle point
+Passing `<ContactsSidebar />` as a prop doesn't call its render function. It passes an inert element object (`{ type: ContactsSidebar, props: ... }`). The component only renders when the receiving layout includes it in its return.
 
 ---
 **Related rules:** `rerender-parent`, `memo-react-memo`

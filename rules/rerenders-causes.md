@@ -1,18 +1,18 @@
-# Re-render Causes
+# Re-render causes
 
 ## rerender-state-change
 
 ### Why it matters
-Executing a `setState` or `dispatch` call flags a component immediately as "dirty" and dynamically schedules a broad re-render execution. Fundamentally, this re-render violently cascades **perpetually down** the component tree — virtually every single descended child embedded within that parent aggressively re-renders, recursively executing endlessly, strictly unless mechanically halted via a `React.memo` barrier.
+Calling `setState` or `dispatch` marks a component as dirty and schedules a re-render. That re-render cascades **down** the tree — every child re-renders too, unless stopped by a `React.memo` boundary.
 
 ```jsx
 function MetricsDashboard() {
-  const [toggle, setToggle] = useState(false); // ← Root State Source
+  const [toggle, setToggle] = useState(false);
   
   return (
     <div className="dashboard">
       <button onClick={() => setToggle(!toggle)}>Refresh Cache</button>
-      {/* 🚨 This child component inexplicably re-renders even though it takes ZERO props */}
+      {/* This child re-renders even though it takes zero props */}
       <HighlyComplicatedMetricOverviewGraph /> 
     </div>
   );
@@ -24,43 +24,41 @@ function MetricsDashboard() {
 ## rerender-parent
 
 ### Why it matters
-React's core default heuristic is unforgiving: strictly if a parent component triggers a re-render sequence, **every nested child absolutely re-renders** — wildly regardless of whether any of their actual explicit props structurally changed. React simply does not intelligently mathematically diff or monitor props for superficial changes automatically; it brutally re-evaluates the entire tree matrix. 
-
-**The singular native React strategy to intercept this endless chain reaction is strictly wrapping the downstream child with `React.memo`.**
+When a parent re-renders, **every child re-renders** by default — regardless of whether any props actually changed. React doesn't automatically diff props. It just re-runs the child function. The only way to stop the cascade is `React.memo`.
 
 ---
 
 ## rerender-context
 
 ### Why it matters
-When you strictly subscribe to a Provider via `useContext(ThemeContext)`, that specific consumer component strictly re-renders every single time the precise object identity mathematically bound to the Context's exact **value** changes — even if the subscribing component natively only consumes a granularly unchanged tiny subset of that massive context object.
+When you call `useContext(SomeContext)`, that component re-renders whenever the context's `value` changes — even if you only read a small piece of a large context object.
 
-### Mitigation strategies
-1. **Architectural Splitting:** Split large monolithic cohesive contexts strictly into tiny domain-focused providers (e.g. `ThemeContext`, `AuthContext`, `ModalContext`). (See `context-splitting`).
-2. **Provider Memoization:** Rigorously wrap the exact context `value` literal object structurally with `useMemo` specifically inside the overarching Provider component to stabilize its reference cleanly.
-3. **Atomic State Managers:** Adopt hyper-granular subscribing libraries implicitly like `Zustand` or `Jotai` which bypass standard Context structural limitations completely.
+### Ways to reduce unnecessary context renders
+1. **Split contexts**: Separate unrelated data into different contexts (see `context-splitting`).
+2. **Memoize the value**: Wrap the context `value` object in `useMemo` inside the provider.
+3. **Use a state manager**: Libraries like Zustand or Jotai give you granular subscriptions without the re-render blast radius of Context.
 
 ---
 
 ## rerender-props-myth
 
 ### Why it matters
-The absolute most universally held misconception among developers: *"If my component's props don't actively change, the component natively won't re-render."*
+The most common React misconception: *"If my props don't change, my component won't re-render."*
 
-**This is deeply factually false.** React does not watch or track props dynamically. A standard component cleanly re-renders solely because its explicit **parent** strictly re-rendered passing newly instantiated references, or its own internal local **state** forcefully changed. Props are frankly just an argument payload mechanically passed rapidly into the fresh execution function call.
+**This is wrong.** React doesn't watch or diff props automatically. A component re-renders because its **parent re-rendered** or its own **state changed**. Props are just arguments passed into the function call.
 
-The singular conditional exception is literally when a component is strictly wrapped in a `React.memo` barrier — which explicitly intercepts the flow, comprehensively checks the new props violently against the old props structurally (shallow equal), and definitively bails out of rendering if identically matched.
+The only exception is `React.memo`, which intercepts the re-render, checks old props against new props (shallow equality), and bails out if they match.
 
-### Summary Reality Matrix
+### When does a component re-render?
 
-| Trigger Phase | Causes React to Re-render? |
+| Trigger | Re-renders? |
 |---|---|
-| Native `setState` hook executed in component | ✅ Resoundingly Yes |
-| Parent organically re-renders | ✅ Yes (Brutally, always, natively by default) |
-| Active Context Provider value structurally changes | ✅ Yes (If explicitly subscribed via useContext) |
-| Prop arguments strictly completely identical | ❌ No (But only assuming the parent itself did not re-render) |
-| `React.memo` wrapper + completely structurally identical props | ❌ Cleanly Native Bailout (No) |
-| `React.memo` wrapper + mutated props matrix | ✅ Resoundingly Yes |
+| `setState` called inside the component | Yes |
+| Parent re-renders | Yes (always, by default) |
+| Context value changes | Yes (if subscribed via `useContext`) |
+| Props unchanged, parent didn't re-render | No |
+| `React.memo` + unchanged props | No (skipped) |
+| `React.memo` + changed props | Yes |
 
 ---
 **Related rules:** `memo-react-memo`, `compose-children-prop`

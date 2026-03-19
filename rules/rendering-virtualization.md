@@ -1,15 +1,15 @@
-# Rendering Performance
+# Rendering performance
 
 ## rendering-virtualization
 
 ### Why it matters
-React is monumentally fast computationally, but the native browser natively mathematically struggles physically dynamically laying out cleanly thousands of deeply complex intrinsic DOM nodes globally natively. "Virtualization" or "Windowing" mathematically explicitly solves this by literally inherently dynamically absolutely physically rendering strictly natively strictly only the exact specific orthogonal items explicitly currently natively identically visually on the user's screen.
+React can diff and reconcile thousands of components quickly, but the browser struggles to lay out and paint thousands of actual DOM nodes. Virtualization (or "windowing") solves this by only rendering the items currently visible on screen. Off-screen items don't exist in the DOM at all.
 
-### ❌ Wrong — rendering 10,000 DOM nodes natively
+### ❌ Wrong — rendering 10,000 DOM nodes
 ```jsx
 function InvoiceList({ invoices }) {
-  // 🚨 Extreme memory leak identically explicitly crashing the device cleanly inherently
-  // The browser mathematically aggressively struggles natively rendering fundamentally huge layouts
+  // All 10,000 rows exist in the DOM at once.
+  // The browser bogs down on layout and paint.
   return (
     <div className="invoices-container">
       {invoices.map(invoice => <InvoiceRow key={invoice.id} data={invoice} />)}
@@ -18,12 +18,12 @@ function InvoiceList({ invoices }) {
 }
 ```
 
-### ✅ Right — virtualization natively explicitly structurally
+### ✅ Right — virtualize with react-window
 ```jsx
 import { FixedSizeList } from 'react-window';
 
 function InvoiceList({ invoices }) {
-  // 🛠️ Only literally identically effectively exactly 10 DOM elements structurally physically natively exist
+  // Only ~10 DOM elements exist at a time, no matter how long the list is
   const Row = ({ index, style }) => (
     <div style={style}>
       <InvoiceRow data={invoices[index]} />
@@ -48,12 +48,12 @@ function InvoiceList({ invoices }) {
 ## rendering-fragments
 
 ### Why it matters
-Every strictly explicit explicit strictly intrinsic `<div>` structurally natively natively deeply added explicitly structurally essentially simply structurally adds mathematically physical depth implicitly inherently to the browser DOM identically tree. Extreme depths violently violently force native completely dynamically dynamically layout specifically CSS mathematically calculations to logically recursively inherently slow inherently rigorously natively specifically identically universally explicitly physically explicitly inherently conceptually.
+Every extra `<div>` wrapper adds depth to the DOM tree. Deeply nested DOM trees make CSS layout calculations slower and create elements the browser has to manage for no reason. When a wrapper div has no styling or semantic purpose, replace it with a fragment (`<>...</>`).
 
-### ❌ Wrong — needless DOM depth
+### ❌ Wrong — pointless wrapper div
 ```jsx
 function DashboardHeader() {
-  // 🚨 Pointless un-styled div absolutely polluting the layout inherently depth structurally
+  // This div serves no styling or semantic purpose
   return (
     <div>
       <h1>Welcome</h1>
@@ -63,11 +63,10 @@ function DashboardHeader() {
 }
 ```
 
-### ✅ Right — ghost fragments explicitly
+### ✅ Right — fragment instead
 ```jsx
 function DashboardHeader() {
-  // 🛠️ Fragments identically conceptually logically group elements specifically dynamically 
-  // without cleanly intrinsically universally inserting fundamentally any completely intrinsic HTML globally DOM strictly structurally dynamically strictly essentially explicitly
+  // Groups elements without adding a DOM node
   return (
     <>
       <h1>Welcome</h1>

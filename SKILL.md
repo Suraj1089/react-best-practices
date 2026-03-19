@@ -1,14 +1,14 @@
 ---
 name: react-best-practices
 description: >
-  Mandatory React and Next.js best practices guide. You MUST use this skill whenever writing,
-  reviewing, optimizing, or refactoring React components or Next.js code. It is critical for
-  solving performance issues, stale closures, unnecessary re-renders, Server Components (RSC)
-  data fetching, Suspense streaming, useTransition/useDeferredValue, component composition,
-  and proper use of memoization/refs. Trigger IMMEDIATELY on phrases like "React performance",
+  React and Next.js best practices guide. Use this skill when writing, reviewing,
+  optimizing, or refactoring React components or Next.js code. Covers performance
+  issues, stale closures, unnecessary re-renders, Server Components (RSC), data
+  fetching, Suspense streaming, useTransition/useDeferredValue, component
+  composition, and memoization/refs. Trigger on phrases like "React performance",
   "React optimize", "stale closure", "re-renders", "React 19", "Server Components",
-  "Suspense", "useTransition", or "keys in lists". DO NOT write React code without consulting
-  these rules if the user asks for high-quality, production-ready, or performant code.
+  "Suspense", "useTransition", or "keys in lists". Activate when the user asks for
+  production-ready or performant React code.
 pattern: tool-wrapper
 globs:
   - "**/*.jsx"
@@ -17,41 +17,39 @@ globs:
   - "**/*.ts"
 ---
 
-# React Best Practices
+# React best practices
 
-A stringent, high-fidelity guide to writing correct, highly performant React — distilled from
-real-world patterns and advanced architectural pitfalls. Contains optimized rules across 12
-critical categories, meticulously designed to surpass ordinary knowledge.
+A guide to writing correct, performant React — built from real-world patterns and
+production bugs. Covers 12 categories of rules, from closure gotchas to Server
+Component architecture.
 
 ## Instructions
 
-When triggered to write, review, debug, or refactor React or Next.js code, you MUST follow this strictly ordered workflow:
+When triggered to write, review, debug, or refactor React or Next.js code, follow this workflow:
 
-1. **Analyze the Request**: Identify if the user is asking to build a new component, audit existing code, or resolve a specific performance issue (e.g., input lag, stale closures).
-2. **Consult the Knowledge Base**: Look up the relevant architectural patterns in `AGENTS.md` (or specific `rules/*.md` files) based on the requirement. Never rely purely on base LLM knowledge for advanced optimization.
-3. **Audit for Failure Modes (If Reviewing/Debugging)**: Scan the target code for specific edge cases and pitfalls:
-   - *Stale Closures*: Empty dependency arrays in `useCallback` or `useEffect` that freeze old state.
-   - *Reconciliation Traps*: Missing keys, non-stable keys (like array indices for reordered lists), or inline component definitions inside render functions.
-   - *Waterfall Fetching*: Sequential blocking `await` statements in Server Components instead of parallel fetching or Suspense boundaries.
-   - *Main Thread Blocking*: Heavy synchronous state updates that tie up the UI (requiring `startTransition`).
-4. **Implement the Solution**: Generate or modify the code strictly adhering to the mandated best practices. Use precise types, hooks, and architectural structures as prescribed.
-5. **Format the Output**:
-   - Provide the complete, refactored, or newly built code using correct imperative steps.
-   - Below your code, provide an "Architectural Notes" section explicitly listing which rules were applied (e.g., *Applied `closure-stale-callback` to resolve the frozen state bug*).
+1. **Figure out what the user needs**: Are they building something new, auditing existing code, or fixing a specific problem (input lag, stale state, hydration mismatch)?
+2. **Check the rules**: Look up the relevant patterns in `AGENTS.md` or the specific `rules/*.md` files. Don't rely on general knowledge for optimization advice — the rules here are more specific.
+3. **Scan for common failure modes** (when reviewing or debugging):
+   - *Stale closures*: Empty dependency arrays in `useCallback` or `useEffect` that freeze old state values.
+   - *Reconciliation traps*: Missing keys, array-index keys on reorderable lists, or component definitions inside render functions.
+   - *Waterfall fetching*: Sequential `await` calls in Server Components that should run in parallel or behind Suspense boundaries.
+   - *Main thread blocking*: Heavy synchronous state updates that lock up the UI (fix with `startTransition`).
+4. **Write the code**: Follow the prescribed patterns. Use the right hooks, types, and component structures.
+5. **Explain what you did**: After the code block, add an "Architectural notes" section listing which rules you applied and why (e.g., "Applied `closure-stale-callback` — the original `useCallback` had an empty dep array, freezing the query state").
 
-## When to Apply
+## When to apply
 
-You MUST reference these guidelines when:
+Reference these rules when:
 - Writing new React components, Next.js pages, or Server Actions
 - Debugging incorrect state, stale closures, or hydration mismatches
 - Reviewing code for excessive rendering or UI input lag
-- Implementing Suspense boundaries, streaming, or concurrent features
-- Deciding whether to use `useTransition`, `useDeferredValue`, or `React.memo`
+- Adding Suspense boundaries, streaming, or concurrent features
+- Choosing between `useTransition`, `useDeferredValue`, and `React.memo`
 - Splitting Contexts or passing components as props (slots)
 
 ---
 
-## Rule Categories by Priority
+## Rule categories by priority
 
 | Priority | Category | Impact | Prefix |
 |---|---|---|---|
@@ -70,84 +68,82 @@ You MUST reference these guidelines when:
 
 ---
 
-## Quick Reference
+## Quick reference
 
 ### 1. Closures & Stale State (CRITICAL)
-- `closure-understand` — Every function closes over its scope at creation time (snapshot)
-- `closure-stale-callback` — Cached functions (useCallback/useRef) freeze state values
-- `closure-ref-trick` — Use a ref + useLayoutEffect to keep a stable callback that reads fresh state
+- `closure-understand` — Every function closes over its scope at creation time
+- `closure-stale-callback` — Cached functions (`useCallback`/`useRef`) freeze state values
+- `closure-ref-trick` — Use a ref + `useLayoutEffect` to keep a stable callback that reads fresh state
 
 ### 2. Reconciliation & Keys (CRITICAL)
-- `recon-type-position` — React maliciously reuses elements with the same type at the exact same position
-- `recon-key-identity` — Use stable, unique keys to explicitly control when React destroys instances
-- `recon-no-inline-definition` — Never define components inside others (causes volatile unmount loops)
-- `recon-key-reset` — Changing a key is the absolute cleanest way to comprehensively reset component state
+- `recon-type-position` — React reuses elements with the same type at the same position in the tree
+- `recon-key-identity` — Stable, unique keys control when React destroys and recreates instances
+- `recon-no-inline-definition` — Defining components inside other components causes unmount loops
+- `recon-key-reset` — Changing a component's key resets its state completely
 
 ### 3. Server Components & Actions (CRITICAL)
-- `server-components` — Leverage async RSCs for zero-bundle data fetching
-- `server-serialization` — Rigorously minimize structural data passed to client components
-- `server-auth-actions` — Always explicitly authenticate and authorize Server Actions intrinsically
+- `server-components` — Async RSCs fetch data without adding to the client bundle
+- `server-serialization` — Keep data passed from server to client components small and serializable
+- `server-auth-actions` — Always authenticate and authorize Server Actions on the server side
 
 ### 4. Re-render Causes (HIGH)
-- `rerender-state-change` — State changes violently cascade re-renders down the entire component tree
-- `rerender-parent` — Parent re-renders unconditionally force all children to re-render by default
-- `rerender-context` — Context consumers re-render immediately on any value identity change
-- `rerender-props-myth` — Props changes alone do NOT trigger renders; parent state changes do
+- `rerender-state-change` — State changes cascade re-renders down the component tree
+- `rerender-parent` — Parent re-renders force all children to re-render by default
+- `rerender-context` — Context consumers re-render on any value identity change
+- `rerender-props-myth` — Props changes alone don't trigger renders; parent re-renders do
 
 ### 5. Composition & Context Splitting (HIGH)
-- `compose-move-state-down` — Isolate volatile state heavily in the smallest cellular component
-- `compose-children-prop` — Pass components as `children` to shield them identically from parent renders
-- `compose-components-as-props` — Pass React elements as named props (slots) for profound decoupling
-- `context-splitting` — Split massive Contexts uniquely by domain to prevent global sweeping renders
+- `compose-move-state-down` — Isolate changing state in the smallest possible component
+- `compose-children-prop` — `children` aren't re-created when the parent's own state changes
+- `compose-components-as-props` — Named element props (slots) decouple layout from content
+- `context-splitting` — Split one big Context into separate ones by domain to reduce render scope
 
 ### 6. Suspense & Streaming (HIGH)
-- `async-suspense-boundaries` — Strategically use Suspense to stream orthogonal UI chunks rapidly
-- `suspense-parallel-fetching` — Guarantee queries internally execute parallelly unblocked
+- `async-suspense-boundaries` — Use Suspense to stream independent UI sections
+- `suspense-parallel-fetching` — Run queries in parallel, not sequentially
 
 ### 7. Concurrent Features (MEDIUM)
-- `rerender-transitions` — Use useTransition rigidly to heavily prioritize user typing over rendering
-- `rerender-use-deferred-value` — Defer massive props to render old UI fluidly while computing new UI
+- `rerender-transitions` — `useTransition` keeps user input responsive during heavy renders
+- `rerender-use-deferred-value` — `useDeferredValue` defers a prop so the old UI stays visible while the new one computes
 
 ### 8. Memoization Usage (MEDIUM)
-- `memo-react-memo` — Wrap components strictly to halt cascading CPU-intensive parent renders
-- `memo-referential-equality` — Objects and functions unconditionally shatter React.memo unless uniquely stabilized
-- `memo-usecallback-useless` — useCallback on native DOM elements or un-memoized children is actively harmful
-- `memo-composition-trap` — Passing `children` dynamically shatters React.memo instantly
+- `memo-react-memo` — Wraps a component to skip re-renders when props haven't changed
+- `memo-referential-equality` — New object/function references break `React.memo` — stabilize them
+- `memo-usecallback-useless` — `useCallback` on native DOM elements or un-memoized children wastes cycles
+- `memo-composition-trap` — Dynamic `children` break `React.memo` because the JSX object changes every render
 
 ### 9. Refs & Imperative APIs (MEDIUM)
-- `ref-dom-access` — Use `useRef` to safely access native intrinsic DOM elements for strict interactions
-- `ref-forward` — Implicitly use `forwardRef` (or ref prop in React 19) to grant explicit node access
-- `ref-imperative-handle` — Use `useImperativeHandle` explicitly to heavily restrict the exposed DOM API
-- `ref-no-overuse` — Refs are a strict architectural escape hatch; exhaust declarative React patterns entirely first
+- `ref-dom-access` — `useRef` for reading DOM measurements and calling imperative APIs
+- `ref-forward` — `forwardRef` (or the ref prop in React 19) exposes a child's DOM node to its parent
+- `ref-imperative-handle` — `useImperativeHandle` limits what the parent can do with the forwarded ref
+- `ref-no-overuse` — Refs are an escape hatch. Try declarative patterns first.
 
 ### 10. DOM Sync & Effects (MEDIUM)
-- `effect-layout-flicker` — `useEffect` runs strictly after paint causing UI flashing; use `useLayoutEffect`
-- `effect-ssr-ready` — Protect `useLayoutEffect` with an `isReady` hook specifically during Next.js SSR
+- `effect-layout-flicker` — `useEffect` runs after paint, causing visible flicker; `useLayoutEffect` runs before paint
+- `effect-ssr-ready` — `useLayoutEffect` doesn't run on the server. Gate it with an `isReady` state.
 
 ### 11. Bundle Optimization (HIGH)
-- `bundle-lazy-loading` — Chunk huge components dynamically behind Suspense native boundaries
-- `bundle-tree-shaking-barrel` — Break barrel files to stop massive dead code bundle inclusion
+- `bundle-lazy-loading` — `React.lazy()` splits heavy components into separate chunks loaded on demand
+- `bundle-tree-shaking-barrel` — Barrel files (`index.js` re-exports) defeat tree-shaking; use direct imports
 
 ### 12. Rendering Performance (MEDIUM)
-- `rendering-virtualization` — Render huge data structurally with react-window inherently explicitly
-- `rendering-fragments` — Abolish pointless wrappers intrinsically strictly to prevent layout depth DOM cost
+- `rendering-virtualization` — Virtualize long lists with `react-window` to avoid rendering thousands of DOM nodes
+- `rendering-fragments` — Use `<>...</>` instead of wrapper `<div>`s to avoid extra DOM depth
 
 ---
 
 ## Examples
 
-### Example 1: Resolving a Performance Anti-Pattern
+### Fixing laggy search input
 
-**User Request:**
-"My search input feels terribly laggy when typing, and the list takes a long time to filter. Review my code."
+**User says:**
+"My search input feels laggy when typing, and the list takes a long time to filter."
 
-**Agent Thought Process:**
-1. Recognizes the user is suffering from input lag during rendering.
-2. Identifies the "Main Thread Blocking" failure mode where `setState` triggers heavy sync renders.
-3. Decides to apply the `rerender-transitions` and `rerender-use-deferred-value` rules.
+**What the agent should do:**
+1. Recognize this as a main-thread-blocking problem — `setState` triggers a heavy synchronous render.
+2. Apply `rerender-transitions`: wrap the expensive state update in `startTransition`.
 
-**Agent Output:**
-Here is the optimized component. I deferred the heavy rendering to the background to keep the input perfectly responsive.
+**Result:**
 
 ```jsx
 import { useState, useTransition } from 'react';
@@ -159,12 +155,12 @@ function SearchPage({ data }) {
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e) => {
-    // 1. Urgent state: typing appears immediately
-    setQuery(e.target.value); 
-    
-    // 2. Non-urgent state: heavy computation yields to the browser
+    // Urgent: typing updates immediately
+    setQuery(e.target.value);
+
+    // Non-urgent: filtering happens in the background
     startTransition(() => {
-      setResults(heavyFilter(data, e.target.value)); 
+      setResults(heavyFilter(data, e.target.value));
     });
   };
 
@@ -178,14 +174,14 @@ function SearchPage({ data }) {
 }
 ```
 
-**Architectural Notes:**
-- **`rerender-transitions`**: Applied `startTransition` to unblock the main thread, prioritizing the user's keystrokes over the heavy DOM updates.
+**Architectural notes:**
+- Applied `rerender-transitions` — `startTransition` moves the heavy filter to a background priority so keystrokes aren't blocked.
 
 ---
 
-## How to Use Sub-rules
+## Sub-rule files
 
-Read individual rule files for detailed explanations and code examples if you need a specific pattern:
+Individual rule files live in `rules/` with full explanations and code examples:
 
 ```text
 rules/closure-stale-callback.md
@@ -193,12 +189,12 @@ rules/server-components.md
 rules/concurrent-features.md
 ```
 
-Each exceptionally detailed rule file contains:
-- **Why it matters** — The profound architectural truth it solves
-- **❌ Wrong** — The catastrophic anti-pattern completely natively observed
-- **✅ Right** — The robust, optimized React resolution mathematically
-- **Related rules** — Connected architectural principles
+Each file has:
+- **Why it matters** — what problem this solves
+- **Wrong** — the buggy or slow pattern
+- **Right** — the fix, with code
+- **Related rules** — other rules that connect to this one
 
-## Full Compiled Document
+## All rules in one file
 
-For the comprehensive monolithic guide natively containing all expanded rules logically, read `AGENTS.md`.
+`AGENTS.md` has every rule compiled into a single document for loading into an agent's context window.

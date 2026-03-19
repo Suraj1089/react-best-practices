@@ -1,9 +1,9 @@
-# Bundle Optimization
+# Bundle optimization
 
 ## bundle-lazy-loading
 
 ### Why it matters
-Shipping massive megabytes of JavaScript natively forces the browser to aggressively download, parse, and deeply compile scripts completely before the page conceptually becomes interactive. `React.lazy()` (or `next/dynamic`) functionally chunks your bundle strictly into smaller independent payloads, natively deferring the deeply heavy structural code until the explicit exact moment the user structurally interacts with or views that specific component.
+The browser has to download, parse, and compile your JavaScript before the page becomes interactive. If you import a 500KB chart library and a settings modal at the top of your file, users pay for that download even if they never see those components. `React.lazy()` (or `next/dynamic`) splits those components into separate chunks that load only when needed.
 
 ### ❌ Wrong — monolithic bundle
 ```jsx
@@ -15,8 +15,8 @@ function Dashboard() {
 
   return (
     <div>
-      {/* 🚨 User pays the 500KB download penalty for HugeChartLibrary and 
-          ComplexSettingsModal instantly on page load, even if they never open them! */}
+      {/* User downloads both components on page load,
+          even if they never open the settings modal */}
       <HugeChartLibrary />
       <button onClick={() => setShowSettings(true)}>Settings</button>
       {showSettings && <ComplexSettingsModal />}
@@ -25,9 +25,9 @@ function Dashboard() {
 }
 ```
 
-### ✅ Right — split and dynamically load
+### ✅ Right — split and load on demand
 ```jsx
-// 🛠️ The browser literally doesn't download these files until natively requested
+// These files aren't downloaded until the component is rendered
 const HugeChartLibrary = React.lazy(() => import('./HugeChartLibrary'));
 const ComplexSettingsModal = React.lazy(() => import('./ComplexSettingsModal'));
 
@@ -57,18 +57,17 @@ function Dashboard() {
 ## bundle-tree-shaking-barrel
 
 ### Why it matters
-"Barrel files" (`index.js` files that blindly export dozens of other files) forcefully trick bundlers structurally into eagerly explicitly importing fundamentally massive amounts of unused code natively into the final client payload. If a component imports one tiny SVG icon from a barrel aggressively exporting 5,000 icons, it frequently fundamentally compiles identically all 5,000 icons.
+Barrel files (`index.js` files that re-export everything from a folder) can prevent bundlers from tree-shaking. If you import one small button from a barrel that re-exports 5,000 components, the bundler may pull in all of them.
 
 ### ❌ Wrong — barrel import
 ```jsx
-// 🚨 Next.js/Webpack may spectacularly fail to tree-shake this, 
-// pulling in every single component identically in the entire ui/ folder
+// Webpack may pull in every component in the ui/ folder
 import { Button, Checkbox, HugeDatePicker } from '@/components/ui';
 ```
 
-### ✅ Right — deep structurally direct imports
+### ✅ Right — direct imports
 ```jsx
-// 🛠️ Mathematically guaranteed explicitly to strictly import uniquely the target code
+// Only imports the code you actually use
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
 import HugeDatePicker from '@/components/ui/HugeDatePicker';

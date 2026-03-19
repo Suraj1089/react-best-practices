@@ -1,19 +1,19 @@
-# Concurrent Features & Transitions
+# Concurrent features & transitions
 
 ## rerender-transitions
 
 ### Why it matters
-React 18 introduced concurrent rendering. Normally, every state update is "urgent"—it interrupts the browser, freezes the UI until rendering completes, and explicitly blocks user input. `startTransition` or `useTransition` allows you to mark specific state updates as "non-urgent". React will begin rendering the update in the background, but if the user interacts (like typing in an input), React will instantaneously abandon the background render to handle the keystroke smoothly, natively eliminating input lag.
+React 18 added concurrent rendering. By default, every `setState` call is urgent — React blocks the main thread until it finishes rendering, which locks up user input. `useTransition` lets you mark a state update as non-urgent. React will start rendering it in the background, but if the user types or clicks, React drops that background work to handle the interaction first. The result: no input lag.
 
-### ❌ Wrong — blocking the main thread natively
+### ❌ Wrong — blocking the main thread
 ```jsx
 function SearchPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
 
   const handleChange = (e) => {
-    // 🚨 BOTH are urgent! Typing feels horribly sluggish
-    // because rendering 1000 results blocks the keystroke.
+    // Both updates are urgent. Rendering 1000 results
+    // blocks the keystroke, so typing feels sluggish.
     setQuery(e.target.value); 
     setResults(heavyFilter(data, e.target.value)); 
   };
@@ -35,10 +35,10 @@ function SearchPage() {
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e) => {
-    // 🛠️ Urgent: The controlled input strictly updates instantly
+    // Urgent: the input updates immediately
     setQuery(e.target.value); 
     
-    // 🛠️ Non-urgent: The heavy list rendering happens in the background
+    // Non-urgent: the list re-render happens in the background
     startTransition(() => {
       setResults(heavyFilter(data, e.target.value)); 
     });
@@ -59,18 +59,17 @@ function SearchPage() {
 ## rerender-use-deferred-value
 
 ### Why it matters
-While `useTransition` requires you to have direct structural access to the exact `setState` function to wrap it, `useDeferredValue` is strictly employed when you strictly receive a prop from above and you have completely zero control over how it is fundamentally set. It returns a explicitly delayed computationally "lagging" version of the prop, allowing the component to render the old value fluidly while React computes the profoundly new value deeply in the background.
+`useTransition` requires direct access to the `setState` call so you can wrap it. `useDeferredValue` is for when you receive a prop from a parent and have no control over how it's set. It returns a "lagging" version of the value — the component keeps showing the old value while React computes the new one in the background.
 
 ### ✅ Pattern — deferring an incoming prop
 ```jsx
-// 🛠️ SearchResults doesn't control `query`, it just receives it.
+// SearchResults doesn't control `query`, it just receives it.
 function SearchResults({ query }) {
-  // 🛠️ React will instantly render with the OLD deferredQuery while it
-  // computationally figures out the intense heavy rendering for the NEW query.
+  // React renders with the old deferredQuery while computing
+  // the new one in the background
   const deferredQuery = useDeferredValue(query);
   const isStale = query !== deferredQuery;
 
-  // Render the heavy list strictly using the lagging deferred value
   const results = highlyExpensiveFilter(data, deferredQuery);
 
   return (
@@ -82,8 +81,8 @@ function SearchResults({ query }) {
 ```
 
 ### When to use which?
-- If you inherently have the strict `setState` access → Always prefer `useTransition`.
-- If you strictly literally only have the raw prop variable → `useDeferredValue`.
+- You have the `setState` call → use `useTransition`.
+- You only have the prop → use `useDeferredValue`.
 
 ---
 **Related rules:** `rerender-state-change`, `rendering-usetransition-loading`

@@ -1,14 +1,15 @@
-# DOM Sync & Effects
+# DOM sync & effects
 
 ## effect-layout-flicker
 
 ### Why it matters
-`useEffect` runs **asynchronously after** the browser has painted the screen. If your effect measures the DOM (e.g., gets the width of a container) and then triggers a state update based on that measurement, you are effectively forcing a double-render. The user will physically see:
-1. First paint — the incorrect or unsized layout flashes on screen.
-2. State update triggers a re-render.
-3. Second paint — the corrected layout snaps into place.
+`useEffect` runs **after** the browser has painted. If your effect measures the DOM (say, getting a container's width) and then calls `setState` based on that measurement, you get a double render. The user sees:
 
-This is visible as a **flash or flicker** and looks extremely unpolished. For DOM measurements that dictate layout, you must use `useLayoutEffect` — it runs **synchronously immediately after React mutates the DOM but strictly before the browser is allowed to paint**, completely eliminating the flicker.
+1. First paint — the element appears at position 0,0 (or some default).
+2. The effect fires, updates state, and triggers a re-render.
+3. Second paint — the element jumps to the correct position.
+
+That jump is visible as a flash or flicker. For layout measurements that determine positioning, use `useLayoutEffect` instead — it runs **after** React updates the DOM but **before** the browser paints, so the user only ever sees the final result.
 
 ### ❌ Wrong — flicker with useEffect
 ```jsx
@@ -17,7 +18,7 @@ function Tooltip({ targetRect, children }) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
-    // 🐛 RUNS AFTER PAINT: User sees tooltip flash at 0,0 before moving!
+    // Runs AFTER paint: tooltip flashes at 0,0 before jumping to the right spot
     const rect = tooltipRef.current.getBoundingClientRect();
     setPosition({
       top: targetRect.bottom + 8,
@@ -40,7 +41,7 @@ function Tooltip({ targetRect, children }) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useLayoutEffect(() => {
-    // 🛠️ RUNS BEFORE PAINT: User only ever sees the final correctly calculated position
+    // Runs BEFORE paint: the user only sees the final position
     const rect = tooltipRef.current.getBoundingClientRect();
     setPosition({
       top: targetRect.bottom + 8,
@@ -55,33 +56,32 @@ function Tooltip({ targetRect, children }) {
 ### When to use which
 | Scenario | Hook |
 |---|---|
-| Fetching API data, setting up subscriptions, logging | `useEffect` |
-| Measuring specific DOM nodes to adjust layout before showing the user | `useLayoutEffect` |
-| Firing imperative animations that must start in exact sync with UI appearance | `useLayoutEffect` |
-| Literally anything else that doesn't visibly mutate the DOM | `useEffect` |
+| Fetching data, setting up subscriptions, logging | `useEffect` |
+| Measuring DOM nodes to adjust positioning before the user sees it | `useLayoutEffect` |
+| Starting animations that must sync with the initial paint | `useLayoutEffect` |
+| Anything that doesn't visibly change the DOM | `useEffect` |
 
 ---
 
 ## effect-ssr-ready
 
 ### Why it matters
-`useLayoutEffect` does not run on the server during SSR (Next.js, Remix). Because it can't run on the server, React will emit a warning, and the layout measurement simply won't happen during the server render phase. This guarantees a mismatch between the server-rendered HTML and the first pass of the client HTML (hydration mismatch). 
+`useLayoutEffect` doesn't run on the server (Next.js, Remix). React emits a warning, and the measurement never happens during server rendering. This creates a hydration mismatch between the server HTML and the client's first render.
 
-### ✅ Pattern — isReady hydration gate for SSR
+### ✅ Pattern — isReady gate for SSR
 ```jsx
 function ResponsiveNav({ items }) {
   const navRef = useRef(null);
-  const [isReady, setIsReady] = useState(false); // starts false on server
+  const [isReady, setIsReady] = useState(false); // false on the server
   const [visibleCount, setVisibleCount] = useState(items.length);
 
   useLayoutEffect(() => {
-    // Now safe. Client-only execution.
+    // Only runs on the client
     const width = navRef.current.getBoundingClientRect().width;
     setVisibleCount(calculateFit(width, items));
     setIsReady(true);
   }, [items]);
 
-  // Server render strategy: hiding content completely (or rendering a skeleton)
   if (!isReady) {
     return <nav ref={navRef} style={{ visibility: 'hidden' }}>{items.map(renderItem)}</nav>;
   }
@@ -91,7 +91,7 @@ function ResponsiveNav({ items }) {
 ```
 
 ### Alternative
-Use `usehooks-ts` or the `react-use` library's `useIsomorphicLayoutEffect` hook, which automatically falls back to `useEffect` strictly on the server to simply suppress the annoying React SSR warning, while keeping the correct synchronous behavior in the client browser. 
+The `useIsomorphicLayoutEffect` hook from `usehooks-ts` or `react-use` automatically falls back to `useEffect` on the server, which suppresses the React SSR warning while keeping the synchronous behavior on the client.
 
 ---
 **Related rules:** `ref-dom-access`

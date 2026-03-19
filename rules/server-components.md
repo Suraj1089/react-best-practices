@@ -3,17 +3,17 @@
 ## server-components
 
 ### Why it matters
-React Server Components (RSC) fundamentally shift the paradigm: components physically render explicitly on the server and strictly stream heavily optimized serialized HTML and UI trees natively to the client. They definitively ship **zero JavaScript bundle entirely** to the client. This natively eliminates cascading waterfalls by physically co-locating the fundamental data fetching literally right next to the server component.
+React Server Components (RSC) render on the server and stream the result to the client as serialized HTML and UI instructions. They ship **zero JavaScript** to the browser. By co-locating data fetching with the component that uses it, you avoid client-side fetch waterfalls and loading spinners.
 
-### ❌ Wrong — everything is a Client Component natively
+### ❌ Wrong — everything is a Client Component
 ```jsx
-'use client' // 🚨 Forcing the entire route to run strictly on the client
+'use client' // Forces the entire route to run on the client
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    // 🚨 Massive Client-side waterfall fetch!
+    // Client-side waterfall: user sees a skeleton while waiting
     fetch('/api/user-data').then(res => res.json()).then(setData);
   }, []);
 
@@ -22,16 +22,15 @@ export default function DashboardPage() {
 }
 ```
 
-### ✅ Right — leverage async Server Components completely
+### ✅ Right — async Server Component
 ```jsx
-// 🛠️ No 'use client'. This mathematically runs explicitly on the specific Node/Edge server.
+// No 'use client'. Runs on the server.
 import { fetchUserData } from '@/db/queries'; 
 
 export default async function DashboardPage() {
-  // 🛠️ Native await! Zero API routes needed. Zero client JS bundle size!
+  // Direct await — no API route needed, no client JS shipped
   const data = await fetchUserData(); 
 
-  // 🛠️ This JSX evaluates directly on the server database CPU
   return <HeavyDashboard data={data} />; 
 }
 ```
@@ -41,25 +40,25 @@ export default async function DashboardPage() {
 ## server-serialization
 
 ### Why it matters
-When a strictly native Server Component inherently explicitly passes props down cleanly to an explicitly defined `'use client'` component, strictly every single prop must mathematically be natively dynamically serializable across the network boundary. Passing extremely massive raw structural database response objects natively forces React to pointlessly serialize, violently network-transmit, and fundamentally deserialize massive payloads that the client visually doesn't even display.
+When a Server Component passes props to a `'use client'` component, every prop crosses a network boundary and must be serializable. Passing an entire database row (50 columns, including sensitive fields) wastes bandwidth and risks leaking data the client shouldn't see.
 
-### ❌ Wrong — leaking massive database records
+### ❌ Wrong — passing the entire database record
 ```jsx
 export default async function ProductPage({ id }) {
-  // 🚨 Returns an entire 50-column database raw row including sensitive secret admin notes
+  // Full database row, including admin notes and internal IDs
   const rawDbProduct = await db.products.find(id); 
 
-  // 🚨 React explicitly serializes exactly all 50 columns over the network boundary!
+  // All 50 columns serialized and sent to the client
   return <ClientBuyButton product={rawDbProduct} />; 
 }
 ```
 
-### ✅ Right — rigorously extract strictly what the client mathematically needs
+### ✅ Right — pick only what the client needs
 ```jsx
 export default async function ProductPage({ id }) {
   const rawDbProduct = await db.products.find(id); 
 
-  // 🛠️ Expose expressly strictly the 3 exact fields structurally required
+  // Only the 3 fields the button actually uses
   return (
     <ClientBuyButton 
       id={rawDbProduct.id} 
@@ -75,20 +74,19 @@ export default async function ProductPage({ id }) {
 ## server-auth-actions
 
 ### Why it matters
-Server Actions (React 19) explicitly strictly allow natively calling specific server-side mutations securely directly from strict client-side `<form action={...}>` native components. However, strictly because they are literally exact implicit API endpoints functionally, developers massively shockingly forget to stringently explicitly natively authorize the specific action!
+Server Actions (React 19) let you call server-side mutations directly from `<form action={...}>`. But they're effectively public API endpoints — anyone can call them. You have to authenticate and authorize on the server side, just like you would with any API route.
 
-### ❌ Wrong — dangerously unauthenticated server action
+### ❌ Wrong — no authentication
 ```jsx
 'use server'
 
 export async function deleteUserAccount(userId) {
-  // 🚨 DANGER! Anyone natively grabbing this generated URL internally 
-  // can mathematically violently delete anyone's specific account!
+  // Anyone who finds this endpoint can delete any account
   await db.users.delete(userId);
 }
 ```
 
-### ✅ Right — mathematically explicitly authorize inherently
+### ✅ Right — authenticate before mutating
 ```jsx
 'use server'
 import { getSession } from '@/auth';
@@ -96,7 +94,6 @@ import { getSession } from '@/auth';
 export async function deleteUserAccount(userId) {
   const session = await getSession();
   
-  // 🛠️ Strictly authenticate aggressively BEFORE executing the DB mutation
   if (!session || session.user.id !== userId) {
     throw new Error('Unauthorized');
   }

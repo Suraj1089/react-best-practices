@@ -1,36 +1,38 @@
 # React Best Practices (Agent Skill)
 
-An advanced AI Agent Skill designed to enforce rigorous, highly optimized architectural and performance best practices for React and Next.js code. 
+An agent skill that teaches AI coding assistants how to write better React and Next.js code.
 
-When your autonomous AI agent or coding assistant writes, refactors, or reviews React code, this skill strictly curates its output to prevent novice-level mistakes (like stale closures, missing keys, useless renders, or anti-patterns) and promotes enterprise-grade solutions.
+When your agent writes, refactors, or reviews React code, this skill catches common mistakes — stale closures, missing keys, wasted renders, barrel file bloat — and steers toward patterns that actually work in production.
 
-## 🎯 Features
+## What it covers
 
-It spans 12 highly critical React architectural categories:
-1. **Closures & Stale State** (CRITICAL)
-2. **Reconciliation & Keys** (CRITICAL)
-3. **Server Components & RSC** (CRITICAL)
-4. **Re-render Causes** (HIGH)
-5. **Composition & Context** (HIGH)
-6. **Suspense & Streaming** (HIGH)
-7. **Bundle Optimization** (HIGH)
-8. **Concurrent Features** (MEDIUM)
-9. **Memoization Usage** (MEDIUM)
-10. **Refs & Imperative APIs** (MEDIUM)
-11. **DOM Sync & Effects** (MEDIUM)
-12. **Rendering Performance** (MEDIUM)
+12 categories, ranked by how badly they bite you when ignored:
 
-## 📂 Project Structure
+1. **Closures & Stale State** — cached callbacks that silently freeze old values
+2. **Reconciliation & Keys** — React reusing the wrong component instances
+3. **Server Components & RSC** — data fetching without shipping code to the client
+4. **Re-render Causes** — why your tree keeps rendering when nothing changed
+5. **Composition & Context** — solving performance problems with component structure, not memoization
+6. **Suspense & Streaming** — loading states that don't block the whole page
+7. **Bundle Optimization** — lazy loading and tree-shaking mistakes
+8. **Concurrent Features** — `useTransition` and `useDeferredValue` for responsive UIs
+9. **Memoization Usage** — when `React.memo` helps vs. when it's a waste
+10. **Refs & Imperative APIs** — DOM access without fighting the framework
+11. **DOM Sync & Effects** — `useLayoutEffect` vs `useEffect` and SSR gotchas
+12. **Rendering Performance** — virtualization and avoiding unnecessary DOM depth
 
-- `SKILL.md`: The manifest file that agents read to know exactly when to trigger this skill, the workflow to analyze user code, the failure modes to hunt for, and how to format their output notes. Designed for a 100/100 automated registry score.
-- `AGENTS.md`: A comprehensively compiled, monolithic markdown file meant to be read entirely by an agent context window to get immediate context on all React best practices without needing multiple file reads. 
-- `rules/`: A directory with deep-dive markdown files isolated by individual topics (e.g., `closure-stale-callback.md` or `server-components.md`). Each file highlights explicitly *Why it matters*, a `❌ Wrong` example, and a `✅ Right` implementation.
-- `react-best-practices.skill`: A bundled, ready-to-use archive containing the completely packaged skill.
+## Project structure
 
-## 🚀 How Agents Evaluate Quality
+- `SKILL.md` — The manifest agents read to decide when to activate this skill and how to use it
+- `AGENTS.md` — All rules compiled into one file, designed to fit in an agent's context window
+- `rules/` — Individual deep-dive files per topic, each with a "why it matters" section, a wrong example, and a correct one
+- `react-best-practices.skill` — Packaged archive of everything above
 
-This repository is optimized based on universal AI Agent Quality Scoring systems:
-- **Discovery**: Explicit `globs` (`**/*.jsx`, etc.) and exact regex-level triggers.
-- **Implementation**: Clear imperative steps, checking exactly what anti-patterns to scan.
-- **Structure**: Includes proper Markdown segments like `Instructions`, `Examples`, and accurate YAML frontmatter mapping it to the `tool-wrapper` design pattern.
-- **Expertise**: Heavily emphasizes real-world architectural traps rather than generic LLM-style generalizations.
+## Quality scoring
+
+This skill is structured around four quality dimensions used by agent skill registries:
+
+- **Discovery** — File globs (`**/*.jsx`, etc.) and trigger phrases tell agents exactly when to load this skill
+- **Implementation** — Step-by-step workflow with specific failure modes to scan for, not vague advice
+- **Structure** — Standard frontmatter, clear sections, and a `tool-wrapper` design pattern
+- **Expertise** — Real architectural traps (stale closures, reconciliation bugs, waterfall fetching) instead of generic "write clean code" advice
