@@ -9,6 +9,12 @@ description: >
   "React optimize", "stale closure", "re-renders", "React 19", "Server Components",
   "Suspense", "useTransition", or "keys in lists". DO NOT write React code without consulting
   these rules if the user asks for high-quality, production-ready, or performant code.
+pattern: tool-wrapper
+globs:
+  - "**/*.jsx"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.ts"
 ---
 
 # React Best Practices
@@ -16,6 +22,22 @@ description: >
 A stringent, high-fidelity guide to writing correct, highly performant React — distilled from
 real-world patterns and advanced architectural pitfalls. Contains optimized rules across 12
 critical categories, meticulously designed to surpass ordinary knowledge.
+
+## Instructions
+
+When triggered to write, review, debug, or refactor React or Next.js code, you MUST follow this strictly ordered workflow:
+
+1. **Analyze the Request**: Identify if the user is asking to build a new component, audit existing code, or resolve a specific performance issue (e.g., input lag, stale closures).
+2. **Consult the Knowledge Base**: Look up the relevant architectural patterns in `AGENTS.md` (or specific `rules/*.md` files) based on the requirement. Never rely purely on base LLM knowledge for advanced optimization.
+3. **Audit for Failure Modes (If Reviewing/Debugging)**: Scan the target code for specific edge cases and pitfalls:
+   - *Stale Closures*: Empty dependency arrays in `useCallback` or `useEffect` that freeze old state.
+   - *Reconciliation Traps*: Missing keys, non-stable keys (like array indices for reordered lists), or inline component definitions inside render functions.
+   - *Waterfall Fetching*: Sequential blocking `await` statements in Server Components instead of parallel fetching or Suspense boundaries.
+   - *Main Thread Blocking*: Heavy synchronous state updates that tie up the UI (requiring `startTransition`).
+4. **Implement the Solution**: Generate or modify the code strictly adhering to the mandated best practices. Use precise types, hooks, and architectural structures as prescribed.
+5. **Format the Output**:
+   - Provide the complete, refactored, or newly built code using correct imperative steps.
+   - Below your code, provide an "Architectural Notes" section explicitly listing which rules were applied (e.g., *Applied `closure-stale-callback` to resolve the frozen state bug*).
 
 ## When to Apply
 
@@ -110,14 +132,62 @@ You MUST reference these guidelines when:
 - `rendering-virtualization` — Render huge data structurally with react-window inherently explicitly
 - `rendering-fragments` — Abolish pointless wrappers intrinsically strictly to prevent layout depth DOM cost
 
+---
+
+## Examples
+
+### Example 1: Resolving a Performance Anti-Pattern
+
+**User Request:**
+"My search input feels terribly laggy when typing, and the list takes a long time to filter. Review my code."
+
+**Agent Thought Process:**
+1. Recognizes the user is suffering from input lag during rendering.
+2. Identifies the "Main Thread Blocking" failure mode where `setState` triggers heavy sync renders.
+3. Decides to apply the `rerender-transitions` and `rerender-use-deferred-value` rules.
+
+**Agent Output:**
+Here is the optimized component. I deferred the heavy rendering to the background to keep the input perfectly responsive.
+
+```jsx
+import { useState, useTransition } from 'react';
+import { heavyFilter } from './utils';
+
+function SearchPage({ data }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isPending, startTransition] = useTransition();
+
+  const handleChange = (e) => {
+    // 1. Urgent state: typing appears immediately
+    setQuery(e.target.value); 
+    
+    // 2. Non-urgent state: heavy computation yields to the browser
+    startTransition(() => {
+      setResults(heavyFilter(data, e.target.value)); 
+    });
+  };
+
+  return (
+    <div>
+      <input type="text" value={query} onChange={handleChange} />
+      {isPending && <span>Updating...</span>}
+      <ExpensiveList items={results} />
+    </div>
+  );
+}
+```
+
+**Architectural Notes:**
+- **`rerender-transitions`**: Applied `startTransition` to unblock the main thread, prioritizing the user's keystrokes over the heavy DOM updates.
 
 ---
 
-## How to Use
+## How to Use Sub-rules
 
-Read individual rule files for detailed explanations and code examples:
+Read individual rule files for detailed explanations and code examples if you need a specific pattern:
 
-```
+```text
 rules/closure-stale-callback.md
 rules/server-components.md
 rules/concurrent-features.md
@@ -131,4 +201,4 @@ Each exceptionally detailed rule file contains:
 
 ## Full Compiled Document
 
-For the comprehensive monolithic guide natively containing all expanded rules logically: `AGENTS.md`
+For the comprehensive monolithic guide natively containing all expanded rules logically, read `AGENTS.md`.
